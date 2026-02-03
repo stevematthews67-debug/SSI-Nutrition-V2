@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SSI Sports Nutrition</title>
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="SSI Nutrition">
+    <link rel="apple-touch-icon" href="images/app-icon.png">
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <style>
+        :root { --hot-pink: #ff69b4; --black: #121212; --dark-grey: #1e1e1e; --white: #ffffff; --blue: #00d4ff; --gold: #ffd700; --danger: #ff4d4d; }
+        body { background-color: var(--black); color: var(--white); font-family: 'Arial Black', sans-serif; margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; }
+        .container { width: 100%; max-width: 450px; background-color: var(--dark-grey); padding: 20px; border-radius: 20px; border: 2px solid var(--hot-pink); box-shadow: 0 0 20px rgba(255,105,180,0.2); box-sizing: border-box; }
+        h1 { color: var(--hot-pink); text-align: center; margin: 0 0 15px 0; font-size: 1rem; text-transform: uppercase; }
+        nav { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-bottom: 20px; }
+        nav button { background: #333; color: white; border: none; padding: 10px 2px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.55rem; }
+        nav button.active { background: var(--hot-pink); color: var(--black); }
+        .card { background: var(--black); padding: 15px; border-radius: 15px; margin-bottom: 15px; border: 1px solid #333; }
+        .card h3 { margin: 0 0 10px 0; font-size: 0.7rem; color: var(--hot-pink); text-transform: uppercase; }
+        input, select, textarea { width: 100%; padding: 12px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #444; background: #1a1a1a; color: white; box-sizing: border-box; font-family: sans-serif; font-size: 0.9rem; }
+        .btn-main { width: 100%; background: var(--hot-pink); color: var(--black); border: none; padding: 15px; border-radius: 10px; font-weight: 900; cursor: pointer; text-transform: uppercase; }
+        .btn-h2o { background: transparent; border: 1px solid var(--blue); color: var(--blue); padding: 8px; border-radius: 8px; font-size: 0.7rem; flex: 1; cursor: pointer; }
+        .history-list { margin-top: 15px; max-height: 250px; overflow-y: auto; }
+        .history-item { background: #252525; padding: 10px; margin-bottom: 8px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid var(--hot-pink); font-size: 0.8rem; font-family: sans-serif; }
+        .item-h2o { border-left-color: var(--blue); }
+        .del-btn { color: var(--danger); font-weight: bold; cursor: pointer; background: none; border: none; font-size: 1.2rem; }
+        #ai-response { background: #000; padding: 12px; border-radius: 10px; font-size: 0.85rem; border: 1px solid #333; font-family: sans-serif; line-height: 1.4; margin-bottom: 10px; }
+        input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>SSI Sports Nutrition</h1>
+    <nav>
+        <button id="tab-diary" class="active" onclick="switchPage('diary')">DIARY</button>
+        <button id="tab-well" onclick="switchPage('well')">WELL</button>
+        <button id="tab-body" onclick="switchPage('body')">BODY</button>
+        <button id="tab-ai" onclick="switchPage('ai')">AI</button>
+        <button id="tab-goals" onclick="switchPage('goals')">GOALS</button>
+    </nav>
+
+    <div id="page-diary">
+        <div style="text-align:center; font-size: 2.5rem; margin-bottom: 5px;" id="display-rem">0</div>
+        <div class="card" style="border-color: var(--blue); text-align: center;">
+            <div style="font-size: 1.5rem; color: var(--blue); margin-bottom: 10px;" id="display-h2o">0 ml</div>
+            <div style="display:flex; gap:10px;"><button class="btn-h2o" onclick="addWater(250)">+ Glass</button><button class="btn-h2o" onclick="addWater(500)">+ Bottle</button></div>
+        </div>
+        <select id="quick-food" onchange="applyQuickFood()">
+            <option value="">-- SSI Verified Food List --</option>
+            <option value="450|Oats with Berries">Oats & Berries (450 kcal)</option>
+            <option value="600|Chicken & Rice">Chicken & Rice (600 kcal)</option>
+            <option value="750|Pasta Bolognese">Pasta Bolognese (750 kcal)</option>
+            <option value="350|Recovery Shake">Recovery Shake (350 kcal)</option>
+        </select>
+        <input type="text" id="food-name" placeholder="Food Name">
+        <input type="number" id="food-cal" placeholder="Calories">
+        <button class="btn-main" onclick="logFood()">Log Fuel</button>
+        <div id="list-diary" class="history-list"></div>
+    </div>
+
+    <div id="page-well" style="display:none;">
+        <div class="card"><h3>Recovery Log</h3><input type="number" id="well-sleep" placeholder="Hours Slept"><select id="well-energy"><option value="1">1 - Tired</option><option value="3" selected>3 - Normal</option><option value="5">5 - Elite</option></select><textarea id="well-note" placeholder="Notes..."></textarea></div>
+        <button class="btn-main" onclick="logWellness()">Save Wellness</button>
+        <div id="list-well" class="history-list"></div>
+    </div>
+
+    <div id="page-body" style="display:none;">
+        <div class="card" style="padding:5px;"><canvas id="chartBody"></canvas></div>
+        <input type="date" id="body-date">
+        <div style="display:flex; gap:10px;"><input type="number" step="0.1" id="body-weight" placeholder="kg"><input type="number" step="0.1" id="body-fat" placeholder="BF%"></div>
+        <button class="btn-main" onclick="logBody()">Record Stats</button>
+        <div id="list-body" class="history-list"></div>
+    </div>
+
+    <div id="page-ai" style="display:none;">
+        <div class="card" style="border-color: var(--gold);">
+            <h3 style="color:var(--gold);">SSI AI Coach</h3>
+            <div id="ai-response">How can I help you reach your SSI goals?</div>
+            <input type="text" id="ai-input" placeholder="Ask Gemini about fueling...">
+            <button class="btn-main" id="ai-btn" style="background:var(--gold);" onclick="askGemini()">Consult AI</button>
+        </div>
+    </div>
+
+    <div id="page-goals" style="display:none;">
+        <div class="card"><h3>SSI Plan</h3><select id="goal-strategy"><option value="Maintain">Maintain</option><option value="Put on Weight">Bulk</option><option value="Lose Weight">Cut</option></select><input type="number" id="goal-weight" placeholder="Target kg"><input type="number" id="goal-cals" placeholder="Target Cals"><button class="btn-main" onclick="saveGoals()">Update Plan</button></div>
+        <textarea id="coach-note" placeholder="Coach Feedback..."></textarea>
+        <button class="btn-main" style="background:var(--gold);" onclick="generatePDF()">Download PDF</button>
+    </div>
+</div>
+
+<script>
+    // ==========================================
+    // 1. PASTE YOUR GEMINI API KEY HERE
+    // ==========================================
+    const GEMINI_API_KEY = "AIzaSyBnXnkA6F0-RIkySS3IEeA2fjma5amrsrI"; 
+
+    let diary = JSON.parse(localStorage.getItem('ssiDiary')) || [];
+    let well = JSON.parse(localStorage.getItem('ssiWell')) || [];
+    let bodyData = JSON.parse(localStorage.getItem('ssiBody')) || [];
+    let config = JSON.parse(localStorage.getItem('ssiConfig')) || { cals: 2500, weight: 75, strategy: 'Maintain' };
+    let chart;
+
+    window.onload = () => {
+        document.getElementById('body-date').value = new Date().toISOString().split('T')[0];
+        updateUI();
+    };
+
+    function switchPage(p) {
+        ['diary', 'well', 'body', 'ai', 'goals'].forEach(id => {
+            document.getElementById('page-'+id).style.display = (p === id) ? 'block' : 'none';
+            document.getElementById('tab-'+id).classList.toggle('active', p === id);
+        });
+        if(p === 'body') { renderChart(); updateBodyList(); }
+    }
+
+    async function askGemini() {
+        const input = document.getElementById('ai-input').value;
+        const resp = document.getElementById('ai-response');
+        if(!input) return;
+        resp.innerText = "Consulting SSI AI...";
+        
+        try {
+            // Using the REST API fetch method
+            const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: `You are an elite sports nutritionist. User strategy: ${config.strategy}. Question: ${input}` }] }]
+                })
+            });
+            const d = await r.json();
+            resp.innerText = d.candidates[0].content.parts[0].text;
+        } catch (e) {
+            resp.innerText = "Error: Check API Key or Internet connection.";
+        }
+    }
+
+    // --- RE-INTEGRATED FUNCTIONS ---
+    function applyQuickFood() { const val = document.getElementById('quick-food').value; if(!val) return; const [c, n] = val.split('|'); document.getElementById('food-name').value = n; document.getElementById('food-cal').value = c; }
+    function logFood() { const n = document.getElementById('food-name').value, c = parseInt(document.getElementById('food-cal').value); if(!n || isNaN(c)) return; diary.push({ id: Date.now(), n, c, type: 'food' }); saveDiary(); document.getElementById('food-name').value = ''; document.getElementById('food-cal').value = ''; }
+    function addWater(ml) { diary.push({ id: Date.now(), n: 'Hydration', ml, type: 'h2o' }); saveDiary(); }
+    function deleteItem(id) { diary = diary.filter(i => i.id !== id); saveDiary(); }
+    function saveDiary() { localStorage.setItem('ssiDiary', JSON.stringify(diary)); updateUI(); }
+    function logWellness() { well.push({ date: new Date().toLocaleDateString(), s: document.getElementById('well-sleep').value, e: document.getElementById('well-energy').value, n: document.getElementById('well-note').value }); localStorage.setItem('ssiWell', JSON.stringify(well)); alert("Saved"); updateWellList(); }
+    function logBody() { bodyData.push({ id: Date.now(), date: document.getElementById('body-date').value, w: document.getElementById('body-weight').value, bf: document.getElementById('body-fat').value }); localStorage.setItem('ssiBody', JSON.stringify(bodyData)); renderChart(); updateBodyList(); }
+    function deleteBody(id) { bodyData = bodyData.filter(b => b.id !== id); localStorage.setItem('ssiBody', JSON.stringify(bodyData)); renderChart(); updateBodyList(); }
+    
+    function updateUI() {
+        const cals = diary.filter(i => i.type === 'food').reduce((s, i) => s + i.c, 0);
+        const water = diary.filter(i => i.type === 'h2o').reduce((s, i) => s + i.ml, 0);
+        document.getElementById('display-rem').innerText = config.cals - cals;
+        document.getElementById('display-h2o').innerText = water + " ml";
+        const list = document.getElementById('list-diary');
+        list.innerHTML = '';
+        diary.slice().reverse().forEach(i => {
+            const isH = i.type === 'h2o';
+            list.innerHTML += `<div class="history-item ${isH ? 'item-h2o' : ''}"><span>${isH ? '💧 '+i.ml+'ml' : i.n+' ('+i.c+')'}</span><button class="del-btn" onclick="deleteItem(${i.id})">×</button></div>`;
+        });
+    }
+
+    function updateWellList() {
+        const list = document.getElementById('list-well'); list.innerHTML = '';
+        well.slice().reverse().forEach(i => list.innerHTML += `<div class="history-item" style="border-left-color:var(--gold)"><span>${i.date} | E: ${i.e}/5 | ${i.s}h</span></div>`);
+    }
+
+    function updateBodyList() {
+        const list = document.getElementById('list-body'); list.innerHTML = '';
+        bodyData.slice().reverse().forEach(i => list.innerHTML += `<div class="history-item" style="border-left-color:var(--blue)"><span>${i.date}: ${i.w}kg (${i.bf}%)</span><button class="del-btn" onclick="deleteBody(${i.id})">×</button></div>`);
+    }
+
+    function renderChart() {
+        const ctx = document.getElementById('chartBody').getContext('2d');
+        if(chart) chart.destroy();
+        chart = new Chart(ctx, { type: 'line', data: { labels: bodyData.map(d => d.date), datasets: [{ label: 'Weight', data: bodyData.map(d => d.w), borderColor: '#ff69b4', yAxisID: 'y' }, { label: 'BF%', data: bodyData.map(d => d.bf), borderColor: '#00d4ff', yAxisID: 'y1' }] }, options: { scales: { y: { position: 'left' }, y1: { position: 'right', grid: { drawOnChartArea: false } } }, plugins: { legend: { display: false } } } });
+    }
+
+    function saveGoals() { config = { cals: document.getElementById('goal-cals').value, weight: document.getElementById('goal-weight').value, strategy: document.getElementById('goal-strategy').value }; localStorage.setItem('ssiConfig', JSON.stringify(config)); alert("Updated"); updateUI(); }
+    function generatePDF() { const doc = new jsPDF(); doc.text("SSI PERFORMANCE REPORT", 105, 20, { align: "center" }); doc.text(`Coach Note: ${document.getElementById('coach-note').value}`, 20, 40); doc.save("SSI_Report.pdf"); }
+    function clearAll() { if(confirm("Wipe all data?")) { localStorage.clear(); location.reload(); } }
+</script>
+</body>
+</html>
