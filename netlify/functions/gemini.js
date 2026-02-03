@@ -24,7 +24,7 @@ exports.handler = async (event) => {
     }
 
     const model = process.env.HF_MODEL || 'google/flan-t5-large';
-    const hfUrl = `https://https://router.huggingface.co/models/${encodeURIComponent(model)}`;
+    const hfUrl = `https://router.huggingface.co/models/${encodeURIComponent(model)}`;
 
     const payload = {
       inputs: `You are an elite sports nutritionist. User strategy: ${strategy}.\nQuestion: ${prompt}`,
