@@ -1,0 +1,15 @@
+[build]
+  # if this is a static repo (single index.html at root) publish from the repo root
+  publish = "."
+  # If you have a build step, change this command accordingly (e.g., "npm run build")
+  command = ""
+
+# Tell Netlify where your functions are
+[functions]
+  directory = "netlify/functions"
+
+# SPA / client-side routing redirect to index.html
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
