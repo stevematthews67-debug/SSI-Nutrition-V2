@@ -2,7 +2,7 @@
 // Netlify Function: proxies client requests to Hugging Face Inference API
 // Reads HF_API_KEY (and optional HF_MODEL) from process.env (set in Netlify site settings)
 
-const fetch = (...args) => import('node-fetch').then(({ default: f }) => f(...args));
+// Native fetch is available in Node.js 18+
 
 exports.handler = async (event) => {
   try {
