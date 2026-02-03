@@ -1,11 +1,15 @@
 // netlify/functions/gemini.js
-// Netlify Function: proxies client requests to Google's Generative Language API
-// Reads GEMINI_API_KEY from process.env (set in Netlify site settings)
+// Netlify Function: proxies client requests to Hugging Face Inference API
+// Reads HF_API_KEY (and optional HF_MODEL) from process.env (set in Netlify site settings)
 
 const fetch = (...args) => import('node-fetch').then(({ default: f }) => f(...args));
 
 exports.handler = async (event) => {
   try {
+    if (event.httpMethod !== 'POST') {
+      return { statusCode: 405, body: JSON.stringify({ error: 'Method Not Allowed' }) };
+    }
+
     const bodyData = event.body ? JSON.parse(event.body) : {};
     const prompt = bodyData.prompt;
     const strategy = bodyData.strategy || 'Maintain';
@@ -14,37 +18,51 @@ exports.handler = async (event) => {
       return { statusCode: 400, body: JSON.stringify({ error: 'prompt required' }) };
     }
 
-    const key = process.env.GEMINI_API_KEY;
+    const key = process.env.HF_API_KEY;
     if (!key) {
-      return { statusCode: 500, body: JSON.stringify({ error: 'API key not configured' }) };
+      return { statusCode: 500, body: JSON.stringify({ error: 'HF_API_KEY not configured' }) };
     }
 
-    const requestBody = {
-      contents: [
-        {
-          parts: [
-            {
-              text: `You are an elite sports nutritionist. User strategy: ${strategy}.\nQuestion: ${prompt}`
-            }
-          ]
-        }
-      ]
+    const model = process.env.HF_MODEL || 'google/flan-t5-large';
+    const hfUrl = `https://api-inference.huggingface.co/models/${encodeURIComponent(model)}`;
+
+    const payload = {
+      inputs: `You are an elite sports nutritionist. User strategy: ${strategy}.\nQuestion: ${prompt}`,
+      parameters: { max_new_tokens: 256, temperature: 0.7 }
     };
 
-    const r = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody)
-      }
-    );
+    const r = await fetch(hfUrl, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${key}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
 
     const data = await r.json();
-    return {
-      statusCode: r.status >= 200 && r.status < 300 ? 200 : r.status,
-      body: JSON.stringify(data)
+
+    // Extract generated text from common HF response shapes
+    let generated = '';
+    if (Array.isArray(data) && data[0] && data[0].generated_text) {
+      generated = data[0].generated_text;
+    } else if (data && typeof data === 'object' && data.generated_text) {
+      generated = data.generated_text;
+    } else if (data && data.error) {
+      return { statusCode: r.status || 500, body: JSON.stringify({ error: data.error }) };
+    } else if (typeof data === 'string') {
+      generated = data;
+    } else {
+      // Fallback: try to stringify useful fields
+      try { generated = JSON.stringify(data); } catch (e) { generated = 'Unable to parse model response'; }
+    }
+
+    const shaped = {
+      candidates: [ { content: { parts: [ { text: generated } ] } } ],
+      raw: data
     };
+
+    return { statusCode: 200, body: JSON.stringify(shaped) };
   } catch (err) {
     console.error('Netlify function error:', err);
     return { statusCode: 500, body: JSON.stringify({ error: 'server error' }) };
