@@ -1,475 +1,420 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>SSI Sports Nutrition</title>
-
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="SSI Nutrition" />
-    <link rel="apple-touch-icon" href="images/app-icon.png" />
-
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
-    <style>
-        :root { --hot-pink: #ff69b4; --black: #121212; --dark-grey: #1e1e1e; --white: #ffffff; --blue: #00d4ff; --gold: #ffd700; --danger: #ff4d4d; }
-        body { background-color: var(--black); color: var(--white); font-family: 'Arial Black', sans-serif; margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; }
-        .container { width: 100%; max-width: 450px; background-color: var(--dark-grey); padding: 20px; border-radius: 20px; border: 2px solid var(--hot-pink); box-shadow: 0 0 20px rgba(255,105,180,0.2); }
-        h1 { color: var(--hot-pink); text-align: center; margin: 0 0 15px 0; font-size: 1rem; text-transform: uppercase; }
-        nav { display:flex; gap:6px; justify-content:center; margin-bottom:10px; }
-        button { cursor:pointer; padding:8px 10px; border-radius:8px; border:none; background:#333; color:#fff; }
-        .card { background:#0f0f0f; padding:12px; border-radius:10px; margin-bottom:10px; border: 1px solid #222; }
-        .btn-main { background: var(--hot-pink); border: none; color: #000; padding: 8px 12px; border-radius: 8px; font-weight: bold; }
-        input, select, textarea { width: calc(100% - 10px); padding: 8px; margin-bottom: 8px; border-radius: 6px; border: 1px solid #333; background: #121212; color: #fff; box-sizing: border-box; }
-        .history-list { max-height: 200px; overflow:auto; margin-top:8px; }
-        .history-item { background: #252525; padding: 10px; margin-bottom: 8px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid var(--hot-pink); }
-        .item-h2o { border-left-color: var(--blue); }
-        .del-btn { color: var(--danger); font-weight: bold; cursor: pointer; background: none; border: none; font-size: 1.2rem; }
-        #ai-response { background: #000; padding: 12px; border-radius: 10px; font-size: 0.85rem; border: 1px solid #333; font-family: sans-serif; line-height: 1.4; margin-bottom: 10px; }
-        input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
-    </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Training & Match Session Log</title>
+  <style>
+    :root{font-family:system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;line-height:1.4;color:#111}
+    body{max-width:900px;margin:28px auto;padding:16px}
+    h1{margin:0 0 8px}
+    form{display:grid;grid-template-columns:1fr;gap:10px;background:#fbfbfb;padding:14px;border:1px solid #e6e6e6;border-radius:8px}
+    label{display:flex;flex-direction:column;font-size:14px}
+    select,input[type="text"],input[type="number"],input[type="datetime-local"],textarea{padding:8px;border:1px solid #d0d0d0;border-radius:6px;font-size:14px}
+    fieldset{border:1px solid #e0e0e0;padding:10px;border-radius:6px}
+    .h-row{display:flex;gap:10px;align-items:center}
+    .h-row > *{flex:1}
+    button{padding:8px 12px;border-radius:6px;border:0;background:#1366d6;color:#fff;cursor:pointer}
+    button.secondary{background:#6c757d}
+    .muted{color:#666;font-size:13px}
+    .sessions{margin-top:18px}
+    .session{border:1px solid #efefef;padding:10px;border-radius:6px;margin-bottom:10px;background:#fff}
+    .actions{display:flex;gap:8px}
+    small.badge{background:#e9f2ff;color:#0b63d6;padding:4px 8px;border-radius:999px;font-weight:600}
+    .error{color:#a00}
+    @media(min-width:700px){
+      form{grid-template-columns:repeat(2,1fr)}
+      form .full{grid-column:1/-1}
+    }
+  </style>
 </head>
 <body>
+  <h1>Training / Match session</h1>
+  <p class="muted">Add a session with date/time, duration, how you felt, and a reflection.</p>
 
-<div class="container">
-    <h1>SSI Sports Nutrition</h1>
-    <nav>
-        <button id="tab-diary" class="active" onclick="switchPage('diary')">DIARY</button>
-        <button id="tab-well" onclick="switchPage('well')">WELL</button>
-        <button id="tab-body" onclick="switchPage('body')">BODY</button>
-        <button id="tab-ai" onclick="switchPage('ai')">AI</button>
-        <button id="tab-goals" onclick="switchPage('goals')">GOALS</button>
-    </nav>
+  <form id="sessionForm" novalidate>
+    <label>
+      Event type
+      <select id="eventType" required>
+        <option value="Training">Training</option>
+        <option value="Match">Match</option>
+      </select>
+    </label>
 
-    <div id="page-diary">
-        <div style="text-align:center; font-size: 2.5rem; margin-bottom: 5px;" id="display-rem">0</div>
-        <div class="card" style="border-color: var(--blue); text-align: center;">
-            <div style="font-size: 1.5rem; color: var(--blue); margin-bottom: 10px;" id="display-h2o">0 ml</div>
+    <label>
+      Subtype
+      <select id="subtype" required>
+        <!-- populated by script -->
+      </select>
+    </label>
 
-            <div style="display:flex; gap:10px; justify-content:center; margin-bottom:8px;">
-                <button class="btn-h2o" onclick="addWater(250)">+ Glass</button>
-                <button class="btn-h2o" onclick="addWater(500)">+ Bottle</button>
-            </div>
+    <label>
+      Date & time
+      <input id="startAt" type="datetime-local" required />
+    </label>
 
-            <select id="quick-food" onchange="applyQuickFood()">
-                <option value="">-- SSI Verified Food List --</option>
-                <option value="450|Oats with Berries">Oats & Berries (450 kcal)</option>
-                <option value="600|Chicken & Rice">Chicken & Rice (600 kcal)</option>
-                <option value="750|Pasta Bolognese">Pasta Bolognese (750 kcal)</option>
-                <option value="350|Recovery Shake">Recovery Shake (350 kcal)</option>
-            </select>
+    <label>
+      Duration (minutes)
+      <input id="durationMin" type="number" min="1" step="1" required placeholder="e.g. 90" />
+    </label>
 
-            <!-- NEW: optional date + time inputs (if left blank we use now) -->
-            <div style="display:flex; gap:8px;">
-                <input type="date" id="food-date" title="Optional: choose a date" style="width:50%;">
-                <input type="time" id="food-time" title="Optional: choose a time" style="width:50%;">
-            </div>
+    <div id="trainingActivityWrapper" class="full" style="display:none;">
+      <label>
+        Training activity
+        <select id="activity">
+          <option value="">-- Select activity --</option>
+          <option value="On-field">On-field</option>
+          <option value="Weight training">Weight training</option>
+          <option value="Other training">Other training</option>
+        </select>
+      </label>
 
-            <input type="text" id="food-name" placeholder="Food Name">
-            <input type="number" id="food-cal" placeholder="Calories">
-            <div style="display:flex; gap:8px;">
-                <button class="btn-main" onclick="logFood()">Log Fuel</button>
-                <button onclick="exportDiaryCSV()">Export CSV</button>
-                <button onclick="renderDiaryChart(7)">Refresh Chart</button>
-            </div>
+      <label id="activityOtherLabel" style="display:none;">
+        Describe other training activity
+        <input id="activityOtherText" type="text" placeholder="E.g. mobility, cross-training..." />
+      </label>
+    </div>
+
+    <fieldset class="full" style="margin-top:6px">
+      <legend>Perceived performance (1 = poor, 5 = excellent)</legend>
+      <div class="h-row">
+        <label class="muted">Select one</label>
+        <div id="performanceRadios" aria-label="Perceived performance" style="display:flex;gap:8px;align-items:center">
+          <label><input type="radio" name="perceivedPerformance" value="1"> 1</label>
+          <label><input type="radio" name="perceivedPerformance" value="2"> 2</label>
+          <label><input type="radio" name="perceivedPerformance" value="3" checked> 3</label>
+          <label><input type="radio" name="perceivedPerformance" value="4"> 4</label>
+          <label><input type="radio" name="perceivedPerformance" value="5"> 5</label>
         </div>
+      </div>
+    </fieldset>
 
-        <!-- NEW: diary chart area -->
-        <div class="card" style="padding:5px; margin-top:6px;">
-            <canvas id="chartDiary" height="120"></canvas>
-            <div style="display:flex; gap:8px; margin-top:6px; justify-content:center;">
-                <button class="btn-main" onclick="renderDiaryChart(1)">1d</button>
-                <button class="btn-main" onclick="renderDiaryChart(7)">7d</button>
-                <button class="btn-main" onclick="renderDiaryChart(30)">1m</button>
-                <button class="btn-main" onclick="renderDiaryChart(90)">3m</button>
-            </div>
+    <fieldset class="full">
+      <legend>Sleep quality (1 = poor, 5 = excellent)</legend>
+      <div class="h-row">
+        <label class="muted">Select one</label>
+        <div id="sleepRadios" aria-label="Sleep quality" style="display:flex;gap:8px;align-items:center">
+          <label><input type="radio" name="sleepQuality" value="1"> 1</label>
+          <label><input type="radio" name="sleepQuality" value="2"> 2</label>
+          <label><input type="radio" name="sleepQuality" value="3" checked> 3</label>
+          <label><input type="radio" name="sleepQuality" value="4"> 4</label>
+          <label><input type="radio" name="sleepQuality" value="5"> 5</label>
         </div>
+      </div>
+    </fieldset>
 
-        <div id="list-diary" class="history-list"></div>
+    <label class="full">
+      Personal reflection / notes
+      <textarea id="reflection" rows="4" placeholder="How did it go? Thoughts, things to change next time..."></textarea>
+    </label>
+
+    <div class="full h-row" style="margin-top:6px">
+      <button id="saveBtn" type="submit">Save session</button>
+      <button id="clearForm" type="button" class="secondary">Clear</button>
+      <button id="exportBtn" type="button" class="secondary">Export JSON</button>
     </div>
 
-    <div id="page-well" style="display:none;">
-        <div class="card"><h3>Recovery Log</h3><input type="number" id="well-sleep" placeholder="Hours Slept"><select id="well-energy"><option value="1">1 - Tired</option><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option><option value="5">5 - Energised</option></select><textarea id="well-note" placeholder="Notes..."></textarea><button class="btn-main" onclick="logWellness()">Save Wellness</button></div>
-        <div id="list-well" class="history-list"></div>
-    </div>
+    <div id="formMessage" class="full" aria-live="polite"></div>
+  </form>
 
-    <div id="page-body" style="display:none;">
-        <div class="card" style="padding:5px;"><canvas id="chartBody" height="120"></canvas></div>
-        <input type="date" id="body-date">
-        <div style="display:flex; gap:10px;"><input type="number" step="0.1" id="body-weight" placeholder="kg"><input type="number" step="0.1" id="body-fat" placeholder="BF%"></div>
-        <button class="btn-main" onclick="logBody()">Record Stats</button>
-        <div id="list-body" class="history-list"></div>
-    </div>
+  <section class="sessions">
+    <h2>Saved sessions <small class="muted">(<span id="sessionsCount">0</span>)</small></h2>
+    <div id="sessionsList" aria-live="polite"></div>
+  </section>
 
-    <div id="page-ai" style="display:none;">
-        <div class="card" style="border-color: var(--gold);">
-            <h3 style="color:var(--gold);">SSI AI Coach</h3>
-            <div id="ai-response">How can I help you reach your SSI goals?</div>
-            <input type="text" id="ai-input" placeholder="Ask Gemini about fueling...">
-            <button class="btn-main" id="ai-btn" style="background:var(--gold);" onclick="askGemini()">Consult AI</button>
-        </div>
-    </div>
+  <script>
+    (function () {
+      // Configuration: if you eventually have an API endpoint, change saveToApi to true and set apiUrl.
+      const saveToApi = false; // set true to POST to a server endpoint instead of localStorage
+      const apiUrl = '/api/sessions'; // adjust if using an API
 
-    <div id="page-goals" style="display:none;">
-        <div class="card"><h3>SSI Plan</h3>
-            <select id="goal-strategy"><option value="Maintain">Maintain</option><option value="Put on Weight">Bulk</option><option value="Lose Weight">Cut</option></select>
-            <input id="goal-cals" placeholder="Target Calories">
-            <input id="goal-weight" placeholder="Goal weight kg">
-            <textarea id="coach-note" placeholder="Coach Feedback..."></textarea>
-            <div style="display:flex; gap:8px;">
-                <button class="btn-main" style="background:var(--gold);" onclick="generatePDF()">Download PDF</button>
-                <button onclick="clearAll()">Wipe Data</button>
-            </div>
-        </div>
-    </div>
-</div>
+      const SUBTYPES = [
+        { value: 'Club Training', type: 'Training' },
+        { value: 'School Training', type: 'Training' },
+        { value: 'Other Training', type: 'Training' },
+        { value: 'Club Match', type: 'Match' },
+        { value: 'School Match', type: 'Match' },
+        { value: 'Other Match', type: 'Match' }
+      ];
 
-<script>
-    // NOTE: API key removed from client-side. Proxy via Netlify Function.
-    // localStorage keys and initial load
-    let diary = JSON.parse(localStorage.getItem('ssiDiary')) || [];
-    let well = JSON.parse(localStorage.getItem('ssiWell')) || [];
-    let bodyData = JSON.parse(localStorage.getItem('ssiBody')) || [];
-    let config = JSON.parse(localStorage.getItem('ssiConfig')) || { cals: 2500, weight: 75, strategy: 'Maintain' };
-    let chart;
-    let diaryChart;
-    let selectedDiaryRange = 7; // default 7 days
+      // DOM refs
+      const eventTypeEl = document.getElementById('eventType');
+      const subtypeEl = document.getElementById('subtype');
+      const startAtEl = document.getElementById('startAt');
+      const durationEl = document.getElementById('durationMin');
+      const activityWrapper = document.getElementById('trainingActivityWrapper');
+      const activityEl = document.getElementById('activity');
+      const activityOtherLabel = document.getElementById('activityOtherLabel');
+      const activityOtherText = document.getElementById('activityOtherText');
+      const reflectionEl = document.getElementById('reflection');
+      const form = document.getElementById('sessionForm');
+      const messageEl = document.getElementById('formMessage');
+      const sessionsList = document.getElementById('sessionsList');
+      const sessionsCount = document.getElementById('sessionsCount');
+      const exportBtn = document.getElementById('exportBtn');
+      const clearFormBtn = document.getElementById('clearForm');
 
-    // Migrate/backfill missing timestamps for older entries
-    (function backfillDiary() {
-        let changed = false;
-        diary = diary.map(item => {
-            if (!item.t) {
-                const now = new Date().toISOString();
-                item.t = now;
-                item.d = now.split('T')[0];
-                changed = true;
-            } else if (!item.d) {
-                item.d = item.t.split('T')[0];
-                changed = true;
-            }
-            return item;
+      // Storage key
+      const STORAGE_KEY = 'sessions:v1';
+
+      // Helpers
+      function qsRadios(name) {
+        return Array.from(document.querySelectorAll('input[name="' + name + '"]'));
+      }
+      function getRadioValue(name) {
+        const r = qsRadios(name).find(x => x.checked);
+        return r ? r.value : null;
+      }
+
+      function populateSubtypes() {
+        const type = eventTypeEl.value;
+        // show options filtered by event type
+        subtypeEl.innerHTML = '';
+        SUBTYPES.filter(s => s.type === type).forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s.value;
+          opt.textContent = s.value;
+          subtypeEl.appendChild(opt);
         });
-        if (changed) localStorage.setItem('ssiDiary', JSON.stringify(diary));
-    })();
+      }
 
-    window.onload = () => {
-        document.getElementById('body-date').value = new Date().toISOString().split('T')[0];
-        // populate goals UI
-        document.getElementById('goal-cals').value = config.cals;
-        document.getElementById('goal-weight').value = config.weight;
-        document.getElementById('goal-strategy').value = config.strategy;
-        updateUI();
-        updateWellList();
-        updateBodyList();
-        renderDiaryChart(selectedDiaryRange);
-    };
+      function onEventTypeChange() {
+        populateSubtypes();
+        // Show training activity only for Training
+        const isTraining = eventTypeEl.value === 'Training';
+        activityWrapper.style.display = isTraining ? 'block' : 'none';
+        if (!isTraining) {
+          activityEl.value = '';
+          activityOtherText.value = '';
+          activityOtherLabel.style.display = 'none';
+        }
+      }
 
-    function switchPage(p) {
-        ['diary', 'well', 'body', 'ai', 'goals'].forEach(id => {
-            const page = document.getElementById('page-'+id);
-            const tab = document.getElementById('tab-'+id);
-            if (page) page.style.display = (p === id) ? 'block' : 'none';
-            if (tab) tab.classList.toggle('active', p === id);
-        });
-        if (p === 'body') { renderChart(); updateBodyList(); }
-    }
-
-    // Diary / Food
-    function applyQuickFood() {
-        const val = document.getElementById('quick-food').value;
-        if (!val) return;
-        const [c, n] = val.split('|');
-        document.getElementById('food-name').value = n;
-        document.getElementById('food-cal').value = c;
-    }
-
-    function logFood() {
-        const n = document.getElementById('food-name').value;
-        const c = parseInt(document.getElementById('food-cal').value);
-        if (!n || isNaN(c)) return alert('Enter food name and calories');
-
-        // Read optional date/time inputs
-        const dateInput = document.getElementById('food-date').value; // YYYY-MM-DD or ''
-        const timeInput = document.getElementById('food-time').value; // HH:MM or ''
-
-        let timestamp;
-        if (dateInput && timeInput) {
-            timestamp = new Date(`${dateInput}T${timeInput}`);
-        } else if (dateInput && !timeInput) {
-            // If only date given, assume midday to avoid timezone issues
-            timestamp = new Date(`${dateInput}T12:00`);
-        } else if (!dateInput && timeInput) {
-            // If only time given, use today's date with provided time
-            const today = new Date().toISOString().split('T')[0];
-            timestamp = new Date(`${today}T${timeInput}`);
+      function onActivityChange() {
+        if (activityEl.value === 'Other training') {
+          activityOtherLabel.style.display = 'block';
+          activityOtherText.focus();
         } else {
-            timestamp = new Date();
+          activityOtherLabel.style.display = 'none';
+          activityOtherText.value = '';
         }
-        const iso = timestamp.toISOString();
-        const dateOnly = iso.split('T')[0]; // YYYY-MM-DD
+      }
 
-        diary.push({ id: Date.now(), n, c, type: 'food', t: iso, d: dateOnly });
-        saveDiary();
+      function loadSessions() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          return raw ? JSON.parse(raw) : [];
+        } catch (e) {
+          console.error('Failed to parse sessions from storage', e);
+          return [];
+        }
+      }
 
-        // clear inputs
-        document.getElementById('food-name').value = '';
-        document.getElementById('food-cal').value = '';
-        document.getElementById('food-date').value = '';
-        document.getElementById('food-time').value = '';
+      function saveSessions(arr) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(arr || []));
+      }
 
-        // refresh UI
-        updateUI();
-    }
-
-    function addWater(ml) {
-        const now = new Date().toISOString();
-        const day = now.split('T')[0];
-        diary.push({ id: Date.now(), n: 'Hydration', ml, type: 'h2o', t: now, d: day });
-        saveDiary();
-        updateUI();
-    }
-
-    function deleteItem(id) {
-        if (!confirm('Delete this item?')) return;
-        diary = diary.filter(i => i.id !== id);
-        saveDiary();
-        updateUI();
-    }
-
-    function saveDiary() {
-        localStorage.setItem('ssiDiary', JSON.stringify(diary));
-        updateUI();
-    }
-
-    // Wellness
-    function logWellness() {
-        const s = document.getElementById('well-sleep').value || '';
-        const e = document.getElementById('well-energy').value || '';
-        const n = document.getElementById('well-note').value || '';
-        const now = new Date().toISOString();
-        well.push({ id: Date.now(), date: new Date().toLocaleDateString(), s, e, n, t: now });
-        localStorage.setItem('ssiWell', JSON.stringify(well));
-        document.getElementById('well-sleep').value = '';
-        document.getElementById('well-note').value = '';
-        updateWellList();
-    }
-
-    function deleteBody(id) {
-        if (!confirm('Delete this body entry?')) return;
-        bodyData = bodyData.filter(b => b.id !== id);
-        localStorage.setItem('ssiBody', JSON.stringify(bodyData));
-        renderChart();
-        updateBodyList();
-    }
-
-    // UI updates
-    function updateUI() {
-        const cals = diary.filter(i => i.type === 'food').reduce((s, i) => s + (i.c || 0), 0);
-        const water = diary.filter(i => i.type === 'h2o').reduce((s, i) => s + (i.ml || 0), 0);
-        document.getElementById('display-rem').innerText = (config.cals - cals) + " kcal";
-        document.getElementById('display-h2o').innerText = water + " ml";
-        const list = document.getElementById('list-diary');
-        list.innerHTML = '';
-        diary.slice().reverse().forEach(i => {
-            const isH = i.type === 'h2o';
-            const left = isH 
-                ? `💧 ${i.ml}ml ${i.t ? ' @ ' + new Date(i.t).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : ''}` 
-                : `${i.n} (${i.c} kcal) ${i.t ? ' @ ' + new Date(i.t).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : ''}`;
-            list.innerHTML += `<div class="history-item ${isH ? 'item-h2o' : ''}"><span>${left}</span><div><button class="del-btn" onclick="deleteItem(${i.id})">×</button></div></div>`;
-        });
-
-        // refresh diary chart (default to selected range)
-        renderDiaryChart(selectedDiaryRange);
-    }
-
-    function updateWellList() {
-        const list = document.getElementById('list-well'); list.innerHTML = '';
-        well.slice().reverse().forEach(i => list.innerHTML += `<div class="history-item" style="border-left-color:var(--gold)"><span>${i.date} | E: ${i.e}/5 | ${i.s}h | ${i.n || ''}</span></div>`);
-    }
-
-    function updateBodyList() {
-        const list = document.getElementById('list-body'); list.innerHTML = '';
-        bodyData.slice().reverse().forEach(i => list.innerHTML += `<div class="history-item" style="border-left-color:var(--blue)"><span>${i.date}: ${i.w}kg ${i.bf ? '('+i.bf+'%)' : ''}</span><button class="del-btn" onclick="deleteBody(${i.id})">×</button></div>`);
-    }
-
-    // Body chart
-    function renderChart() {
-        const ctx = document.getElementById('chartBody').getContext('2d');
-        if (chart) chart.destroy();
-        // Sort by date ascending
-        const sorted = (bodyData || []).slice().sort((a,b) => new Date(a.date) - new Date(b.date));
-        chart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: sorted.map(d => d.date),
-                datasets: [
-                    { label: 'Weight (kg)', data: sorted.map(d => d.w), borderColor: '#ff69b4', backgroundColor: 'rgba(255,105,180,0.1)', yAxisID: 'y' },
-                    { label: 'Body Fat %', data: sorted.map(d => d.bf || null), borderColor: '#00d4ff', backgroundColor: 'rgba(0,212,255,0.08)', yAxisID: 'y1' }
-                ]
-            },
-            options: {
-                scales: {
-                    y: { position: 'left', beginAtZero: false },
-                    y1: { position: 'right', beginAtZero: false, grid: { drawOnChartArea: false } }
-                }
-            }
-        });
-    }
-
-    // Goals & PDF
-    function saveGoals() {
-        config = { cals: parseInt(document.getElementById('goal-cals').value) || config.cals, weight: parseFloat(document.getElementById('goal-weight').value) || config.weight, strategy: document.getElementById('goal-strategy').value || config.strategy };
-        localStorage.setItem('ssiConfig', JSON.stringify(config));
-        alert('Goals saved');
-        updateUI();
-    }
-
-    function generatePDF() {
-        saveGoals();
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-        doc.setFontSize(14);
-        doc.text("SSI PERFORMANCE REPORT", 105, 20, { align: "center" });
-        doc.setFontSize(10);
-        doc.text(`Strategy: ${config.strategy}`, 20, 40);
-        doc.text(`Target Calories: ${config.cals}`, 20, 48);
-        doc.text(`Goal Weight: ${config.weight} kg`, 20, 56);
-        doc.text(`Coach Note: ${document.getElementById('coach-note').value || ''}`, 20, 72);
-
-        // Add 7-day totals
-        const summary = getDailyTotals(7);
-        doc.text("Last 7 days (date: total kcal):", 20, 90);
-        let y = 98;
-        for (let i = 0; i < summary.labels.length; i++) {
-            doc.text(`${summary.labels[i]}: ${summary.totals[i]} kcal`, 20, y);
-            y += 8;
-            if (y > 270) { doc.addPage(); y = 20; } // ensure we don't overflow page
+      function renderSessions() {
+        const arr = loadSessions();
+        sessionsCount.textContent = String(arr.length);
+        sessionsList.innerHTML = '';
+        if (arr.length === 0) {
+          sessionsList.innerHTML = '<p class="muted">No sessions saved yet.</p>';
+          return;
         }
 
-        doc.save('ssi-performance.pdf');
-    }
-
-    function clearAll() {
-        if (confirm("Wipe all data?")) { localStorage.clear(); location.reload(); }
-    }
-
-    // CSV export
-    function exportDiaryCSV() {
-        if (!diary || diary.length === 0) return alert('No diary data to export');
-        // Build CSV header
-        const headers = ['id','type','name','calories','ml','timestamp','date'];
-        const rows = diary.map(item => {
-            return [
-                item.id || '',
-                item.type || '',
-                item.n ? `"${(item.n+'').replace(/"/g,'""')}"` : '',
-                item.c != null ? item.c : '',
-                item.ml != null ? item.ml : '',
-                item.t || '',
-                item.d || ''
-            ].join(',');
+        arr.slice().reverse().forEach(s => {
+          const div = document.createElement('div');
+          div.className = 'session';
+          const start = new Date(s.startAt);
+          div.innerHTML = [
+            `<div style="display:flex;justify-content:space-between;align-items:center"><strong>${escapeHtml(s.eventType)} · ${escapeHtml(s.subtype)}</strong><small class="muted">${escapeHtml(start.toLocaleString())}</small></div>`,
+            `<div class="muted" style="margin-top:6px">Duration: <strong>${escapeHtml(String(s.durationMin))} min</strong>` + (s.activity ? ` · Activity: <strong>${escapeHtml(s.activity)}${s.activityOther ? ' ('+escapeHtml(s.activityOther)+')' : ''}</strong>` : '') + ` · Perceived: <strong>${escapeHtml(String(s.perceivedPerformance))}</strong> · Sleep: <strong>${escapeHtml(String(s.sleepQuality))}</strong></div>`,
+            s.reflection ? `<p style="margin:8px 0">${escapeHtml(s.reflection)}</p>` : '',
+            `<div class="actions"><button data-id="${s.id}" class="exportItem secondary" type="button">Export</button><button data-id="${s.id}" class="deleteItem secondary" type="button">Delete</button></div>`
+          ].join('');
+          sessionsList.appendChild(div);
         });
-        const csv = [headers.join(','), ...rows].join('\n');
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+
+        // attach listeners for delete/export per-item
+        sessionsList.querySelectorAll('.deleteItem').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            const id = btn.getAttribute('data-id');
+            deleteSession(id);
+          });
+        });
+        sessionsList.querySelectorAll('.exportItem').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            const id = btn.getAttribute('data-id');
+            exportSingle(id);
+          });
+        });
+      }
+
+      function deleteSession(id) {
+        const arr = loadSessions().filter(s => s.id !== id);
+        saveSessions(arr);
+        renderSessions();
+        showMessage('Deleted session.', 'info');
+      }
+
+      function exportSingle(id) {
+        const item = loadSessions().find(s => s.id === id);
+        if (!item) { showMessage('Item not found', 'error'); return; }
+        const filename = 'session-' + (new Date(item.startAt)).toISOString().replace(/[:.]/g,'-') + '.json';
+        downloadJson(item, filename);
+      }
+
+      function downloadJson(obj, filename) {
+        const blob = new Blob([JSON.stringify(obj, null, 2)], {type:'application/json'});
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        const now = new Date().toISOString().split('T')[0];
         a.href = url;
-        a.download = `ssi-diary-${now}.csv`;
+        a.download = filename;
         document.body.appendChild(a);
         a.click();
-        document.body.removeChild(a);
+        a.remove();
         URL.revokeObjectURL(url);
-    }
+      }
 
-    // Aggregation: daily totals for last N days (days=1 returns today)
-    function getDailyTotals(days = 7) {
-        const totals = [];
-        const labels = [];
-        const now = new Date();
-        for (let i = days - 1; i >= 0; i--) {
-            const d = new Date(now);
-            d.setDate(now.getDate() - i);
-            const dayStr = d.toISOString().split('T')[0];
-            const sum = diary
-                .filter(it => it.type === 'food' && it.d === dayStr)
-                .reduce((s, it) => s + (it.c || 0), 0);
-            labels.push(dayStr);
-            totals.push(sum);
-        }
-        return { labels, totals };
-    }
+      function showMessage(text, level) {
+        messageEl.textContent = text;
+        messageEl.className = level === 'error' ? 'error' : '';
+        setTimeout(() => {
+          if (messageEl.textContent === text) {
+            messageEl.textContent = '';
+            messageEl.className = '';
+          }
+        }, 5000);
+      }
 
-    // Diary chart (actual vs target)
-    function renderDiaryChart(days = 7) {
-        selectedDiaryRange = days;
-        const ctx = document.getElementById('chartDiary').getContext('2d');
-        const { labels, totals } = getDailyTotals(days);
-        const target = (config && config.cals) ? config.cals : 2500;
-        const targetArray = labels.map(() => target);
-
-        if (diaryChart) diaryChart.destroy();
-        diaryChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels,
-                datasets: [
-                    { label: 'Actual (kcal)', data: totals, borderColor: '#ff69b4', backgroundColor: 'rgba(255,105,180,0.12)', fill: true },
-                    { label: `Target (${target} kcal)`, data: targetArray, borderColor: '#ffd700', borderDash: [6,4], pointRadius: 0, fill: false }
-                ]
-            },
-            options: {
-                scales: { y: { beginAtZero: true } },
-                interaction: { mode: 'index', intersect: false }
-            }
+      function escapeHtml(s) {
+        if (!s && s !== 0) return '';
+        return String(s).replace(/[&<>"']/g, function(m) {
+          return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]);
         });
-    }
+      }
 
-    // askGemini now calls Netlify Function at /.netlify/functions/gemini
-    async function askGemini() {
-        const input = document.getElementById('ai-input').value;
-        const resp = document.getElementById('ai-response');
-        if (!input) return;
-        resp.innerText = "Consulting SSI AI...";
+      // Create a small random id for stored items
+      function uid() {
+        return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,9);
+      }
 
-        try {
-            const r = await fetch('/.netlify/functions/gemini', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt: input, strategy: config.strategy })
-            });
+      async function submitHandler(e) {
+        e.preventDefault();
+        // Validate
+        const eventType = eventTypeEl.value;
+        const subtype = subtypeEl.value;
+        const startAt = startAtEl.value;
+        const durationMin = durationEl.value;
+        const perceivedPerformance = Number(getRadioValue('perceivedPerformance') || 3);
+        const sleepQuality = Number(getRadioValue('sleepQuality') || 3);
+        const reflection = reflectionEl.value.trim();
 
-            let d;
-            const contentType = r.headers.get("content-type");
-            if (contentType && contentType.includes("application/json")) {
-                d = await r.json();
-            } else {
-                const text = await r.text();
-                throw new Error(`Server returned non-JSON response (${r.status}): ${text.substring(0, 100)}...`);
-            }
-
-            if (!r.ok) {
-                const errMsg = d.error || d.message || `Error ${r.status}`;
-                resp.innerText = `System Error: ${errMsg}`;
-                console.error("API Error", d);
-                return;
-            }
-
-            if (d && d.candidates && d.candidates[0] && d.candidates[0].content && d.candidates[0].content.parts) {
-                resp.innerText = d.candidates[0].content.parts[0].text || JSON.stringify(d);
-            } else if (d && d.output && d.output[0] && d.output[0].content) {
-                resp.innerText = JSON.stringify(d.output[0].content);
-            } else {
-                resp.innerText = JSON.stringify(d);
-            }
-        } catch (e) {
-            console.error(e);
-            resp.innerText = `Error: ${e.message}`;
+        if (!startAt) {
+          showMessage('Please select date and time.', 'error');
+          return;
         }
-    }
-</script>
+        if (!durationMin || Number(durationMin) <= 0) {
+          showMessage('Please enter a duration in minutes.', 'error');
+          return;
+        }
+
+        let activity = null;
+        let activityOther = null;
+        if (eventType === 'Training') {
+          activity = activityEl.value;
+          if (!activity) {
+            showMessage('Please select a training activity.', 'error');
+            return;
+          }
+          if (activity === 'Other training') {
+            activityOther = activityOtherText.value.trim();
+            if (!activityOther) {
+              showMessage('Please describe the other training activity.', 'error');
+              return;
+            }
+          }
+        }
+
+        const payload = {
+          id: uid(),
+          eventType,
+          subtype,
+          startAt: new Date(startAt).toISOString(), // normalized
+          durationMin: Number(durationMin),
+          activity: activity || null,
+          activityOther: activityOther || null,
+          perceivedPerformance,
+          sleepQuality,
+          reflection,
+          createdAt: new Date().toISOString()
+        };
+
+        if (saveToApi) {
+          // Example: POST to server endpoint. If you enable this, make sure your server expects the same shape.
+          try {
+            const res = await fetch(apiUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+            if (!res.ok) {
+              const text = await res.text();
+              throw new Error(text || 'Server error');
+            }
+            showMessage('Session saved to server.');
+            // Optionally refresh list from server instead of localStorage.
+          } catch (err) {
+            console.error(err);
+            showMessage('Failed to save to server: ' + (err.message || err), 'error');
+          }
+        } else {
+          // Save to localStorage
+          const arr = loadSessions();
+          arr.push(payload);
+          saveSessions(arr);
+          renderSessions();
+          showMessage('Session saved locally.');
+        }
+
+        // Optionally clear form (or only partial)
+        form.reset();
+        // restore default radio selections (reset() doesn't toggle checked state reliably in all browsers)
+        qsRadios('perceivedPerformance').forEach(r => r.checked = r.value === '3');
+        qsRadios('sleepQuality').forEach(r => r.checked = r.value === '3');
+        // Re-populate subtype/visibility based on eventType default
+        populateSubtypes();
+        onEventTypeChange();
+      }
+
+      // Wire up events
+      eventTypeEl.addEventListener('change', onEventTypeChange);
+      activityEl.addEventListener('change', onActivityChange);
+      form.addEventListener('submit', submitHandler);
+      exportBtn.addEventListener('click', () => {
+        const arr = loadSessions();
+        if (!arr.length) { showMessage('No sessions to export.', 'error'); return; }
+        downloadJson(arr, 'sessions-export-' + new Date().toISOString().replace(/[:.]/g,'-') + '.json');
+      });
+      clearFormBtn.addEventListener('click', () => {
+        form.reset();
+        qsRadios('perceivedPerformance').forEach(r => r.checked = r.value === '3');
+        qsRadios('sleepQuality').forEach(r => r.checked = r.value === '3');
+        populateSubtypes();
+        onEventTypeChange();
+      });
+
+      // initialize
+      populateSubtypes();
+      onEventTypeChange();
+      renderSessions();
+
+      // expose delete/export utility for debugging (optional)
+      window._sessionStore = {
+        loadSessions, saveSessions, renderSessions
+      };
+    })();
+  </script>
 </body>
 </html>
