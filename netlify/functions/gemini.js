@@ -1,16 +1,36 @@
 // netlify/functions/gemini.js
-// Netlify Function: proxies client requests to Hugging Face Inference API
-// Reads HF_API_KEY (and optional HF_MODEL) from process.env (set in Netlify site settings)
-
-// Native fetch is available in Node.js 18+
+// Netlify Function: proxies client requests to Hugging Face Inference API (OpenAI-compatible)
+// Reads HF_API_KEY (and optional HF_MODEL) from process.env
 
 exports.handler = async (event) => {
   try {
+    if (event.httpMethod === 'GET') {
+      return {
+        statusCode: 200,
+        body: JSON.stringify({
+          status: 'ok',
+          message: 'Gemini function is ready',
+          key_configured: !!process.env.HF_API_KEY,
+          model: process.env.HF_MODEL || 'default'
+        })
+      };
+    }
+
     if (event.httpMethod !== 'POST') {
       return { statusCode: 405, body: JSON.stringify({ error: 'Method Not Allowed' }) };
     }
 
-    const bodyData = event.body ? JSON.parse(event.body) : {};
+    let bodyData = {};
+    try {
+      const rawBody = event.isBase64Encoded 
+        ? Buffer.from(event.body, 'base64').toString('utf-8') 
+        : event.body;
+      bodyData = rawBody ? JSON.parse(rawBody) : {};
+    } catch (parseErr) {
+      console.error('JSON Parse Error:', parseErr);
+      return { statusCode: 400, body: JSON.stringify({ error: 'Invalid JSON body' }) };
+    }
+
     const prompt = bodyData.prompt;
     const strategy = bodyData.strategy || 'Maintain';
 
@@ -23,13 +43,21 @@ exports.handler = async (event) => {
       return { statusCode: 500, body: JSON.stringify({ error: 'HF_API_KEY not configured' }) };
     }
 
-    const model = process.env.HF_MODEL || 'google/flan-t5-large';
-    const hfUrl = `https://router.huggingface.co/models/${encodeURIComponent(model)}`;
+    // Use a modern, working model as default. Llama-3.2-1B-Instruct is fast and available.
+    const model = process.env.HF_MODEL || 'meta-llama/Llama-3.2-1B-Instruct';
+    const hfUrl = `https://router.huggingface.co/v1/chat/completions`;
 
     const payload = {
-      inputs: `You are an elite sports nutritionist. User strategy: ${strategy}.\nQuestion: ${prompt}`,
-      parameters: { max_new_tokens: 256, temperature: 0.7 }
+      model: model,
+      messages: [
+        { role: 'system', content: `You are an elite sports nutritionist. User strategy: ${strategy}.` },
+        { role: 'user', content: prompt }
+      ],
+      max_tokens: 512,
+      temperature: 0.7
     };
+
+    console.log(`Calling HF Router with model: ${model}`);
 
     const r = await fetch(hfUrl, {
       method: 'POST',
@@ -42,29 +70,35 @@ exports.handler = async (event) => {
 
     const data = await r.json();
 
-    // Extract generated text from common HF response shapes
-    let generated = '';
-    if (Array.isArray(data) && data[0] && data[0].generated_text) {
-      generated = data[0].generated_text;
-    } else if (data && typeof data === 'object' && data.generated_text) {
-      generated = data.generated_text;
-    } else if (data && data.error) {
-      return { statusCode: r.status || 500, body: JSON.stringify({ error: data.error }) };
-    } else if (typeof data === 'string') {
-      generated = data;
-    } else {
-      // Fallback: try to stringify useful fields
-      try { generated = JSON.stringify(data); } catch (e) { generated = 'Unable to parse model response'; }
+    if (!r.ok) {
+      console.error('HF API Error:', r.status, data);
+      return { 
+        statusCode: r.status, 
+        body: JSON.stringify({ error: `HF API error: ${r.status}`, details: data }) 
+      };
     }
 
+    // Extract text from OpenAI-compatible response shape
+    let generated = '';
+    if (data.choices && data.choices[0] && data.choices[0].message) {
+      generated = data.choices[0].message.content;
+    } else {
+      generated = 'Unable to parse model response';
+    }
+
+    // Shape the response to match what the frontend expects (Gemini format)
     const shaped = {
       candidates: [ { content: { parts: [ { text: generated } ] } } ],
       raw: data
     };
 
-    return { statusCode: 200, body: JSON.stringify(shaped) };
+    return { 
+      statusCode: 200, 
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(shaped) 
+    };
   } catch (err) {
     console.error('Netlify function error:', err);
-    return { statusCode: 500, body: JSON.stringify({ error: 'server error' }) };
+    return { statusCode: 500, body: JSON.stringify({ error: `Server error: ${err.message}` }) };
   }
 };
