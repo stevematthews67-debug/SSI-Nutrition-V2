@@ -108,10 +108,18 @@
       <textarea id="reflection" rows="4" placeholder="How did it go? Thoughts, things to change next time..."></textarea>
     </label>
 
+    <!-- New quick Play/Train input (hidden by default) -->
+    <label id="playTrainNoteLabel" class="full" style="display:none;">
+      Play/Train note
+      <input id="playTrainNote" type="text" placeholder="Quick note for this play/train session" />
+    </label>
+
     <div class="full h-row" style="margin-top:6px">
       <button id="saveBtn" type="submit">Save session</button>
       <button id="clearForm" type="button" class="secondary">Clear</button>
       <button id="exportBtn" type="button" class="secondary">Export JSON</button>
+      <!-- New button added in same style as the others -->
+      <button id="playTrainBtn" type="button" class="secondary">Play/Train</button>
     </div>
 
     <div id="formMessage" class="full" aria-live="polite"></div>
@@ -153,6 +161,9 @@
       const sessionsCount = document.getElementById('sessionsCount');
       const exportBtn = document.getElementById('exportBtn');
       const clearFormBtn = document.getElementById('clearForm');
+      const playTrainBtn = document.getElementById('playTrainBtn');
+      const playTrainNoteLabel = document.getElementById('playTrainNoteLabel');
+      const playTrainNote = document.getElementById('playTrainNote');
 
       // Storage key
       const STORAGE_KEY = 'sessions:v1';
@@ -223,13 +234,16 @@
           return;
         }
 
+        // show newest first
         arr.slice().reverse().forEach(s => {
           const div = document.createElement('div');
           div.className = 'session';
           const start = new Date(s.startAt);
+          const when = isNaN(start.getTime()) ? 'Unknown' : start.toLocaleString();
+          const activityPart = s.activity ? ` · Activity: <strong>${escapeHtml(s.activity)}${s.activityOther ? ' (' + escapeHtml(s.activityOther) + ')' : ''}</strong>` : '';
           div.innerHTML = [
-            `<div style="display:flex;justify-content:space-between;align-items:center"><strong>${escapeHtml(s.eventType)} · ${escapeHtml(s.subtype)}</strong><small class="muted">${escapeHtml(start.toLocaleString())}</small></div>`,
-            `<div class="muted" style="margin-top:6px">Duration: <strong>${escapeHtml(String(s.durationMin))} min</strong>` + (s.activity ? ` · Activity: <strong>${escapeHtml(s.activity)}${s.activityOther ? ' ('+escapeHtml(s.activityOther)+')' : ''}</strong>` : '') + ` · Perceived: <strong>${escapeHtml(String(s.perceivedPerformance))}</strong> · Sleep: <strong>${escapeHtml(String(s.sleepQuality))}</strong></div>`,
+            `<div style="display:flex;justify-content:space-between;align-items:center"><strong>${escapeHtml(s.eventType)} · ${escapeHtml(s.subtype)}</strong><small class="muted">${escapeHtml(when)}</small></div>`,
+            `<div class="muted" style="margin-top:6px">Duration: <strong>${escapeHtml(String(s.durationMin))} min</strong>${activityPart}</div>`,
             s.reflection ? `<p style="margin:8px 0">${escapeHtml(s.reflection)}</p>` : '',
             `<div class="actions"><button data-id="${s.id}" class="exportItem secondary" type="button">Export</button><button data-id="${s.id}" class="deleteItem secondary" type="button">Delete</button></div>`
           ].join('');
@@ -309,7 +323,7 @@
         const durationMin = durationEl.value;
         const perceivedPerformance = Number(getRadioValue('perceivedPerformance') || 3);
         const sleepQuality = Number(getRadioValue('sleepQuality') || 3);
-        const reflection = reflectionEl.value.trim();
+        let reflection = reflectionEl.value.trim();
 
         if (!startAt) {
           showMessage('Please select date and time.', 'error');
@@ -334,6 +348,14 @@
               showMessage('Please describe the other training activity.', 'error');
               return;
             }
+          }
+        }
+
+        // If the quick Play/Train note is visible and filled, append to reflection
+        if (playTrainNoteLabel.style.display !== 'none') {
+          const note = playTrainNote.value.trim();
+          if (note) {
+            reflection = (reflection ? reflection + '\n\n' : '') + 'Play/Train note: ' + note;
           }
         }
 
@@ -383,6 +405,9 @@
         // restore default radio selections (reset() doesn't toggle checked state reliably in all browsers)
         qsRadios('perceivedPerformance').forEach(r => r.checked = r.value === '3');
         qsRadios('sleepQuality').forEach(r => r.checked = r.value === '3');
+        // Hide quick play/train note after save
+        playTrainNote.value = '';
+        playTrainNoteLabel.style.display = 'none';
         // Re-populate subtype/visibility based on eventType default
         populateSubtypes();
         onEventTypeChange();
@@ -403,6 +428,32 @@
         qsRadios('sleepQuality').forEach(r => r.checked = r.value === '3');
         populateSubtypes();
         onEventTypeChange();
+        // hide quick note as well
+        playTrainNoteLabel.style.display = 'none';
+        playTrainNote.value = '';
+      });
+
+      // New Play/Train button behavior:
+      // - Toggle quick-play input visibility
+      // - Set event type to Training and show training activity fields
+      // - If clicked when visible, toggles off
+      playTrainBtn.addEventListener('click', () => {
+        const isVisible = playTrainNoteLabel.style.display !== 'none';
+        if (isVisible) {
+          playTrainNoteLabel.style.display = 'none';
+          playTrainNote.value = '';
+          playTrainBtn.textContent = 'Play/Train';
+        } else {
+          // ensure training event type and defaults
+          eventTypeEl.value = 'Training';
+          populateSubtypes();
+          onEventTypeChange();
+          // pick a sensible default subtype if available
+          if (subtypeEl.options.length) subtypeEl.value = subtypeEl.options[0].value;
+          playTrainNoteLabel.style.display = 'block';
+          playTrainNote.focus();
+          playTrainBtn.textContent = 'Hide Play/Train';
+        }
       });
 
       // initialize
@@ -418,3 +469,4 @@
   </script>
 </body>
 </html>
+
